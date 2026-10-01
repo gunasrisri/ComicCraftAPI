@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ComicCraft - AI Comic Story Creator</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<main class="container">
+    <header class="hero">
+        <div>
+            <h1>COMICCRAFT</h1>
+            <p>Describe a story and create a five-panel comic with illustrations.</p>
+        </div>
+    </header>
+
+    {% if error %}
+    <div class="error">
+        <strong>Could not create the comic.</strong>
+        <p>{{ error }}</p>
+    </div>
+    {% endif %}
+
+    <section class="card">
+        <h2>Story prompt</h2>
+        <form action="/generate" method="post">
+            <label>Story Prompt</label>
+            <textarea name="story_prompt" required placeholder="A brave fox exploring an enchanted forest..."></textarea>
+
+            <label>Main Character Name</label>
+            <input name="character_name" required placeholder="Arin">
+
+            <label>Setting</label>
+            <input name="setting" required placeholder="Enchanted forest">
+
+            <label>Story Tone</label>
+            <select name="tone">
+                <option>light-hearted</option>
+                <option>dramatic</option>
+                <option>poetic</option>
+                <option>funny</option>
+            </select>
+
+            <label>Art Style</label>
+            <select name="art_style">
+                <option>anime</option>
+                <option>comic book</option>
+                <option>pixel art</option>
+                <option>realistic</option>
+            </select>
+
+            <button type="submit">✨ Create My Comic</button>
+        </form>
+    </section>
+</main>
+</body>
+</html>
