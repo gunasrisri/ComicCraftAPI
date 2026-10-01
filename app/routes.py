@@ -1,11 +1,14 @@
 import json
 import time
+import traceback
 from pathlib import Path
 
 # pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Form, HTTPException, Request
 # pyrefly: ignore [missing-import]
 from fastapi.responses import FileResponse, JSONResponse
+
+from pydantic import ValidationError
 
 from .config import EXPORTS_DIR
 from .schemas import PromptRequest
@@ -19,7 +22,18 @@ router = APIRouter()
 
 
 def _error_message(exc: Exception) -> str:
+    if isinstance(exc, ValidationError):
+        error_msgs = []
+        for err in exc.errors():
+            field = " -> ".join(str(loc) for loc in err.get("loc", []))
+            error_msgs.append(f"Field '{field}': {err.get('msg')}")
+        return "Please check your inputs: " + "; ".join(error_msgs)
     message = str(exc)
+    if "503" in message or "unavailable" in message.lower() or "demand" in message.lower():
+        return (
+            "Google's Gemini model is currently experiencing high demand (503). "
+            "Please wait a moment and try clicking 'Create My Comic' again."
+        )
     if "429" in message or "quota" in message.lower() or "rate" in message.lower():
         return (
             "Gemini API quota/rate limit reached. Wait for the retry period shown "
@@ -72,15 +86,15 @@ async def generate(
     tone: str = Form(...),
     art_style: str = Form(...),
 ):
-    data = PromptRequest(
-        story_prompt=story_prompt,
-        character_name=character_name,
-        setting=setting,
-        tone=tone,
-        art_style=art_style,
-    )
-
     try:
+        data = PromptRequest(
+            story_prompt=story_prompt,
+            character_name=character_name,
+            setting=setting,
+            tone=tone,
+            art_style=art_style,
+        )
+
         layout, pdf_path = _generate_all(data)
         return request.app.state.templates.TemplateResponse(
             request,
@@ -92,6 +106,8 @@ async def generate(
             },
         )
     except Exception as exc:
+        traceback.print_exc()
+        status_code = 400 if isinstance(exc, ValidationError) else (429 if "429" in str(exc) else (503 if "503" in str(exc) else 500))
         return request.app.state.templates.TemplateResponse(
             request,
             "index.html",
@@ -99,7 +115,7 @@ async def generate(
                 "request": request,
                 "error": _error_message(exc),
             },
-            status_code=429 if "429" in str(exc) else 500,
+            status_code=status_code,
         )
 
 
@@ -113,6 +129,7 @@ async def generate_json(data: PromptRequest):
             "pdf_path": pdf_path,
         })
     except Exception as exc:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=_error_message(exc))
 
 

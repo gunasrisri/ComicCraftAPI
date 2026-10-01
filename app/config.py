@@ -8,8 +8,8 @@ load_dotenv(BASE_DIR / ".env")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 
 # Current Gemini defaults. They can be changed in .env without editing code.
-GEMINI_FLASH_MODEL = os.getenv("GEMINI_FLASH_MODEL", "gemini-3.8-flash").strip()
-GEMINI_PRO_MODEL = os.getenv("GEMINI_PRO_MODEL", "gemini-3.1-pro-preview").strip()
+GEMINI_FLASH_MODEL = os.getenv("GEMINI_FLASH_MODEL", "gemini-flash-latest").strip()
+GEMINI_PRO_MODEL = os.getenv("GEMINI_PRO_MODEL", "gemini-flash-latest").strip()
 
 # Local Diffusers image generation is optional because it is resource-heavy.
 IMAGE_BACKEND = os.getenv("IMAGE_BACKEND", "placeholder").strip().lower()

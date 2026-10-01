@@ -13,6 +13,23 @@ def _to_local_path(url_path: str) -> Path:
     return STATIC_DIR / url_path.split("/static/", 1)[-1].replace("/", str(Path("/")))
 
 
+def _clean_text(text: str) -> str:
+    if not text:
+        return ""
+    replacements = {
+        "\u2018": "'",
+        "\u2019": "'",
+        "\u201c": '"',
+        "\u201d": '"',
+        "\u2014": "--",
+        "\u2013": "-",
+        "\u2026": "...",
+    }
+    for k, v in replacements.items():
+        text = text.replace(k, v)
+    return text.encode("latin-1", "replace").decode("latin-1")
+
+
 def save_pdf(layout: list[dict]) -> str:
     filename = f"comic_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
     output = EXPORTS_DIR / filename
@@ -23,7 +40,8 @@ def save_pdf(layout: list[dict]) -> str:
     for panel in layout:
         pdf.add_page()
         pdf.set_font("Helvetica", "B", 18)
-        pdf.cell(0, 12, f"Panel {panel['panel_number']}: {panel['title']}", ln=True)
+        title = _clean_text(f"Panel {panel['panel_number']}: {panel['title']}")
+        pdf.cell(0, 12, title, new_x="LMARGIN", new_y="NEXT")
 
         relative_image = panel["image_path"].removeprefix("/static/").replace("/", "/")
         image_path = STATIC_DIR / Path(relative_image)
@@ -33,21 +51,30 @@ def save_pdf(layout: list[dict]) -> str:
             max_width = 180
             max_height = 100
             ratio = min(max_width / width, max_height / height)
-            pdf.image(str(image_path), x=15, y=32, w=width * ratio, h=height * ratio)
-            pdf.ln(max_height + 5)
+            w_placed = width * ratio
+            h_placed = height * ratio
+            curr_y = pdf.get_y() + 2
+            x_placed = (pdf.w - w_placed) / 2
+            pdf.image(str(image_path), x=x_placed, y=curr_y, w=w_placed, h=h_placed)
+            pdf.set_xy(pdf.l_margin, curr_y + h_placed + 8)
 
-        pdf.set_font("Helvetica", "I", 11)
-        pdf.multi_cell(0, 7, panel["scene_description"])
+        if panel.get("scene_description"):
+            pdf.set_font("Helvetica", "I", 11)
+            pdf.multi_cell(0, 7, _clean_text(panel["scene_description"]), new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(2)
 
-        pdf.set_font("Helvetica", "B", 11)
-        if panel["caption"]:
-            pdf.multi_cell(0, 7, f"Caption: {panel['caption']}")
+        if panel.get("caption"):
+            pdf.set_font("Helvetica", "B", 11)
+            pdf.multi_cell(0, 7, _clean_text(f"Caption: {panel['caption']}"), new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(1)
 
         pdf.set_font("Helvetica", "", 11)
-        if panel["narration"]:
-            pdf.multi_cell(0, 7, f"Narration: {panel['narration']}")
-        if panel["dialogue"]:
-            pdf.multi_cell(0, 7, f"Dialogue: {panel['dialogue']}")
+        if panel.get("narration"):
+            pdf.multi_cell(0, 7, _clean_text(f"Narration: {panel['narration']}"), new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(1)
+        if panel.get("dialogue"):
+            pdf.multi_cell(0, 7, _clean_text(f"Dialogue: {panel['dialogue']}"), new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(1)
 
     pdf.output(str(output))
     return f"/static/exports/{filename}"
